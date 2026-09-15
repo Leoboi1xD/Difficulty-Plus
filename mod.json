@@ -1,0 +1,50 @@
+{
+    "geode": "5.10.1",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081",
+        "mac": "2.2081",
+        "ios": "2.2081"
+    },
+    "id": "indigo.difficulty-plus",
+    "name": "Difficulty Plus",
+    "version": "v1.0.0",
+    "developers": ["Indigo"],
+    "description": "Adds three new difficulty faces: Casual, Tough and Extreme.",
+    "tags": ["interface", "cosmetic"],
+    "resources": {
+        "spritesheets": {
+            "DifficultyPlusSheet": [
+                "resources/DP_casual_001.png",
+                "resources/DP_tough_001.png",
+                "resources/DP_extreme_001.png"
+            ]
+        }
+    },
+    "settings": {
+        "enable-casual": {
+            "name": "Casual (3 stars)",
+            "description": "Show the <cj>Casual</c> face on 3 star levels instead of Normal.",
+            "type": "bool",
+            "default": true
+        },
+        "enable-normal": {
+            "name": "Normal (4 stars)",
+            "description": "Move <cg>Normal</c> onto 4 star levels, where Hard would normally sit. Uses the game's own Normal face.",
+            "type": "bool",
+            "default": true
+        },
+        "enable-tough": {
+            "name": "Tough (7 stars)",
+            "description": "Show the <cr>Tough</c> face on 7 star levels instead of Harder.",
+            "type": "bool",
+            "default": true
+        },
+        "enable-extreme": {
+            "name": "Extreme (9 stars)",
+            "description": "Show the <cp>Extreme</c> face on 9 star levels instead of Insane.",
+            "type": "bool",
+            "default": true
+        }
+    }
+}

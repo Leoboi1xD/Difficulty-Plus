@@ -1,0 +1,9 @@
+build/
+build-*/
+cmake-build-*/
+.cache/
+*.geode
+.vscode/
+.idea/
+CMakeUserPresets.json
+__pycache__/
