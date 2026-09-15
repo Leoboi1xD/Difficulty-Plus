@@ -10,7 +10,7 @@ and Extreme split them and the lower value keeps the vanilla face. Casual slots 
 at 3 stars and pushes Normal down onto 4, leaving Hard on 5 alone.
 
 Everything else Auto (1), Easy (2), Hard (5), Harder (6), Insane (8), Demon (10)
-and all unrated levels — is untouched.
+and all unrated levels is untouched.
 
 The swap happens in level lists (search, saved, browse) and on the level info page.
 Each difficulty has its own on/off toggle in the mod settings.
