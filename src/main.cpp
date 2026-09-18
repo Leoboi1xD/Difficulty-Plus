@@ -3,8 +3,11 @@
 #include <Geode/modify/LevelInfoLayer.hpp>
 #include <Geode/modify/LevelSearchLayer.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
+#include <Geode/modify/StarInfoPopup.hpp>
+
 
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <string>
 #include <vector>
@@ -67,6 +70,64 @@ static GJDifficultySprite* findDifficultySprite(CCNode* node) {
         if (auto found = findDifficultySprite(node->getChildByIndex(i))) return found;
     }
     return nullptr;
+}
+
+static void countCompletedByStars(int* counts, int size) {
+    auto glm = GameLevelManager::sharedState();
+    auto gsm = GameStatsManager::sharedState();
+    if (!glm || !gsm || !glm->m_onlineLevels) return;
+
+    for (auto [id, level] :
+             CCDictionaryExt<std::string_view, GJGameLevel*>(glm->m_onlineLevels)) {
+        if (!level) continue;
+        if (!gsm->hasCompletedLevel(level)) continue;
+        auto stars = level->m_stars.value();
+        if (stars >= 0 && stars < size) counts[stars]++;
+    }
+}
+
+static void splitTier(int total, int lowSeen, int highSeen, int& low, int& high) {
+    auto seen = lowSeen + highSeen;
+    if (total <= 0 || seen <= 0) {
+        low = total > 0 ? total : 0;
+        high = 0;
+        return;
+    }
+    high = static_cast<int>(std::lround(static_cast<double>(total) * highSeen / seen));
+    if (high < 0) high = 0;
+    if (high > total) high = total;
+    low = total - high;
+}
+
+static void swapFace(GJDifficultySprite* sprite, std::string const& id) {
+    if (!sprite) return;
+
+    auto frame = CCSpriteFrameCache::get()->spriteFrameByName(id.c_str());
+    if (!frame) return;
+
+    auto before = sprite->getContentSize();
+    auto scaleX = sprite->getScaleX();
+    auto scaleY = sprite->getScaleY();
+
+    sprite->setDisplayFrame(frame);
+
+    auto after = sprite->getContentSize();
+    if (before.height > 0.f && after.height > 0.f) {
+        auto factor = before.height / after.height;
+        sprite->setScaleX(scaleX * factor);
+        sprite->setScaleY(scaleY * factor);
+    }
+}
+
+static void collectDifficultySprites(CCNode* node, std::vector<GJDifficultySprite*>& out) {
+    if (!node) return;
+    if (auto diff = typeinfo_cast<GJDifficultySprite*>(node)) {
+        out.push_back(diff);
+        return;
+    }
+    for (int i = 0; i < static_cast<int>(node->getChildrenCount()); ++i) {
+        collectDifficultySprites(node->getChildByIndex(i), out);
+    }
 }
 
 static void applySprite(GJDifficultySprite* sprite, GJGameLevel* level) {
@@ -287,6 +348,9 @@ static CCArray* narrowLevels(GJSearchObject* search, CCArray* items) {
 static void applyTo(CCNode* root, GJGameLevel* level) {
     applySprite(findDifficultySprite(root), level);
 }
+
+
+
 }
 
 class $modify(DPLevelCell, LevelCell) {
@@ -566,6 +630,156 @@ class $modify(DPLevelBrowserLayer, LevelBrowserLayer) {
         }
         dp::resetFetch();
         LevelBrowserLayer::loadLevelsFailed(key, type);
+    }
+};
+
+class $modify(DPStarInfoPopup, StarInfoPopup) {
+    bool init(int autos, int easies, int normals, int hards, int harders,
+              int insanes, int dailies, int gauntlets, int maps, bool platformer) {
+        if (!StarInfoPopup::init(autos, easies, normals, hards, harders,
+                                 insanes, dailies, gauntlets, maps, platformer)) {
+            return false;
+        }
+
+        std::vector<GJDifficultySprite*> faces;
+        dp::collectDifficultySprites(this, faces);
+        if (faces.size() < 6) return true;
+
+        std::sort(faces.begin(), faces.end(),
+                  [](GJDifficultySprite* a, GJDifficultySprite* b) {
+                      return a->getPositionX() < b->getPositionX();
+                  });
+
+        auto parent = faces[0]->getParent();
+        if (!parent) return true;
+
+        auto faceY = faces[0]->getPositionY();
+        auto faceScale = faces[0]->getScale();
+
+        std::vector<CCLabelBMFont*> labels;
+        for (int i = 0; i < static_cast<int>(parent->getChildrenCount()); ++i) {
+            auto label = typeinfo_cast<CCLabelBMFont*>(parent->getChildByIndex(i));
+            if (!label) continue;
+            for (auto face : faces) {
+                if (std::fabs(label->getPositionX() - face->getPositionX()) < 2.f &&
+                    label->getPositionY() < faceY) {
+                    labels.push_back(label);
+                    break;
+                }
+            }
+        }
+        if (labels.size() != faces.size()) return true;
+
+        std::sort(labels.begin(), labels.end(),
+                  [](CCLabelBMFont* a, CCLabelBMFont* b) {
+                      return a->getPositionX() < b->getPositionX();
+                  });
+
+        auto labelDrop = faceY - labels[0]->getPositionY();
+        auto labelScale = labels[0]->getScale();
+
+        int seen[16] = {};
+        dp::countCompletedByStars(seen, 16);
+
+        int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0, n9 = 0;
+        dp::splitTier(hards,   seen[4], seen[5], n4, n5);
+        dp::splitTier(harders, seen[6], seen[7], n6, n7);
+        dp::splitTier(insanes, seen[8], seen[9], n8, n9);
+
+        struct Slot {
+            int stars;
+            int count;
+            int reuse;
+            char const* frame;
+        };
+
+        Slot slots[] = {
+            { 1, autos,   0,  nullptr                     },
+            { 2, easies,  1,  nullptr                     },
+            { 3, normals, 2,  "DP_casual_001.png"         },
+            { 4, n4,     -1,  "difficulty_02_btn_001.png" },
+            { 5, n5,      3,  nullptr                     },
+            { 6, n6,      4,  nullptr                     },
+            { 7, n7,     -1,  "DP_tough_001.png"          },
+            { 8, n8,      5,  nullptr                     },
+            { 9, n9,     -1,  "DP_extreme_001.png"        },
+        };
+        auto total = static_cast<int>(sizeof(slots) / sizeof(slots[0]));
+        auto topCount = (total + 1) / 2;
+
+        auto minX = faces.front()->getPositionX();
+        auto maxX = faces.back()->getPositionX();
+        auto centerX = (minX + maxX) / 2.f;
+        auto step = (maxX - minX) / static_cast<float>(faces.size() - 1);
+
+        auto topY = faceY + 30.f;
+        auto bottomY = faceY - 45.f;
+
+        // Two rows need more height than the panel was built for.
+        if (auto bg = typeinfo_cast<CCScale9Sprite*>(
+                this->getChildByIDRecursive("background"))) {
+            auto size = bg->getContentSize();
+            bg->setContentSize({ size.width, size.height + 45.f });
+        }
+        if (auto title = this->getChildByIDRecursive("classic-title")) {
+            title->setPositionY(title->getPositionY() + 22.f);
+        }
+        if (auto ok = this->getChildByIDRecursive("ok-button")) {
+            ok->setPositionY(ok->getPositionY() - 22.f);
+        }
+
+        for (int i = 0; i < total; ++i) {
+            auto const& slot = slots[i];
+
+            auto inTop = i < topCount;
+            auto countInRow = inTop ? topCount : total - topCount;
+            auto indexInRow = inTop ? i : i - topCount;
+            auto rowLeft = centerX - step * (countInRow - 1) / 2.f;
+            auto x = rowLeft + step * indexInRow;
+            auto y = inTop ? topY : bottomY;
+
+            CCNode* face = nullptr;
+            if (slot.reuse >= 0) {
+                face = faces[slot.reuse];
+                if (slot.frame && dp::starsRelabelled(slot.stars)) {
+                    dp::swapFace(faces[slot.reuse], dp::modFrame(slot.frame));
+                }
+            } else {
+                if (!dp::starsRelabelled(slot.stars)) continue;
+                auto id = std::string(slot.frame).rfind("DP_", 0) == 0
+                              ? dp::modFrame(slot.frame)
+                              : std::string(slot.frame);
+                auto frame = CCSpriteFrameCache::get()->spriteFrameByName(id.c_str());
+                if (!frame) continue;
+                auto spr = CCSprite::createWithSpriteFrame(frame);
+                if (!spr) continue;
+                spr->setScale(faceScale);
+                parent->addChild(spr);
+                face = spr;
+
+                // goldFont, not bigFont - that is what makes GD's numbers gold.
+                auto label = CCLabelBMFont::create(std::to_string(slot.count).c_str(),
+                                                   "goldFont.fnt");
+                if (label) {
+                    label->setScale(labelScale);
+                    label->setPosition({ x, y - labelDrop });
+                    parent->addChild(label);
+                }
+            }
+
+            if (!face) continue;
+            face->setPosition({ x, y });
+            face->setScale(faceScale);
+
+            if (slot.reuse >= 0) {
+                auto label = labels[slot.reuse];
+                label->setString(std::to_string(slot.count).c_str());
+                label->setPosition({ x, y - labelDrop });
+                label->setScale(labelScale);
+            }
+        }
+
+        return true;
     }
 };
 

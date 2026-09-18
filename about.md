@@ -15,6 +15,11 @@ Each one **can be turned off individually** in the mod settings.
 The search screen's difficulty row gains matching filters, so you can look for
 Casual, Tough or Extreme levels directly.
 
+The star breakdown on your profile is split out into all nine difficulties across
+two rows. The counts for Auto, Easy and Casual are exact; the rest are split from
+the totals the server sends, which only go down to difficulty tier, using the levels
+saved locally as a guide. Every tier still adds up to the number the game reports.
+
 Purely cosmetic though, nothing about ratings, progress or gameplay is touched.
 
 This Mod is a passion project I always wanted to make and I really appreciate all of you downloaders! 

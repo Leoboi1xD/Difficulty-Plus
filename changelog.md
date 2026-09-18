@@ -1,10 +1,9 @@
 # Changelog
 
-## v1.0.0
+## v1.2.0
 
-* Added **Casual** (3 stars), **Tough** (7 stars) and **Extreme** (9 stars).
-* Moved **Normal** onto 4 stars, so Hard is left with only 5.
-* Faces appear on the level info page.
-* Added **Casual**, **Tough** and **Extreme** filters to the search
-  screen, merged into GD's own difficulty row.
+* Removed MacOS and iOS support, because it was broken
+* Added Android support
+* QOL Changes
+* The profile star breakdown now shows all nine difficulties over two rows.
 * Each difficulty can be toggled individually in the mod settings.
